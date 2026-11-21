@@ -73,9 +73,10 @@ class Canvas {
     if (x < 0 || y < 0 || x >= PW || y >= PW || a <= 0) return;
     const i = (y * PW + x) * 4;
     const inv = 1 - a;
-    this.buf[i] = Math.round(c[0] * a + this.buf[i] * inv);
-    this.buf[i + 1] = Math.round(c[1] * a + this.buf[i + 1] * inv);
-    this.buf[i + 2] = Math.round(c[2] * a + this.buf[i + 2] * inv);
+    const clamp = (v: number): number => Math.max(0, Math.min(255, Math.round(v)));
+    this.buf[i] = clamp(c[0] * a + this.buf[i] * inv);
+    this.buf[i + 1] = clamp(c[1] * a + this.buf[i + 1] * inv);
+    this.buf[i + 2] = clamp(c[2] * a + this.buf[i + 2] * inv);
     this.buf[i + 3] = 255;
   }
   fillRect(dx: number, dy: number, w: number, h: number, c: RGB, a = 1): void {
@@ -104,7 +105,8 @@ class Canvas {
           break;
         }
       }
-      const f = s1[0] === s0[0] ? 0 : (t - s0[0]) / (s1[0] - s0[0]);
+      const fRaw = s1[0] === s0[0] ? 0 : (t - s0[0]) / (s1[0] - s0[0]);
+      const f = Math.max(0, Math.min(1, fRaw)); // never extrapolate past the end stops
       const col: RGB = [
         Math.round(s0[1][0] + (s1[1][0] - s0[1][0]) * f),
         Math.round(s0[1][1] + (s1[1][1] - s0[1][1]) * f),
@@ -229,7 +231,7 @@ const GLYPHS: Record<string, Stroke[]> = {
   A: [[[5, 140], [50, 5], [95, 140]], [[26, 96], [74, 96]]],
   B: [[[8, 140], [8, 5], [60, 5], [88, 26], [88, 52], [60, 70], [8, 70]], [[60, 70], [90, 88], [90, 118], [60, 140], [8, 140]]],
   C: [[[92, 22], [70, 5], [28, 5], [8, 30], [8, 110], [28, 140], [70, 140], [92, 120]]],
-  D: [[[8, 5], [55, 5], [88, 32], [88, 108], [55, 140], [8, 140]]],
+  D: [[[8, 5], [55, 5], [88, 32], [88, 108], [55, 140], [8, 140]], [[8, 5], [8, 140]]],
   E: [[[90, 5], [8, 5], [8, 140], [90, 140]], [[8, 72], [64, 72]]],
   F: [[[8, 140], [8, 5], [90, 5]], [[8, 72], [64, 72]]],
   G: [[[92, 26], [70, 5], [28, 5], [8, 28], [8, 112], [28, 140], [70, 140], [92, 116], [92, 82], [58, 82]]],
@@ -346,7 +348,10 @@ function render(): Buffer {
   // Airship drifting in from the left.
   cv.ellipse(215, 285, 90, 40, TERRA, 1);
   cv.ellipse(215, 278, 70, 26, [214, 110, 80], 1);
-  cv.ellipse(215, 285, 88, 38, [0, 0, 0], 0); // (kept for symmetry of the shape)
+  // Panel seams across the balloon.
+  cv.line(175, 250, 175, 320, 3, [255, 230, 200], 0.5);
+  cv.line(215, 245, 215, 325, 3, [255, 230, 200], 0.5);
+  cv.line(255, 250, 255, 320, 3, [255, 230, 200], 0.5);
   cv.fillRect(190, 325, 50, 18, [58, 36, 54], 1);
   cv.line(200, 322, 192, 306, 3, [58, 36, 54], 1);
   cv.line(230, 322, 238, 306, 3, [58, 36, 54], 1);
